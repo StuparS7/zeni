@@ -2,6 +2,7 @@ const { EVENTS } = require('../shared/schema');
 const { TICK_RATE, SNAPSHOT_RATE, PLAYER_SPEED, WORLD_BOUNDS } = require('../shared/constants');
 const { resolvePlayerCollisions } = require('./map');
 const { updateShooting } = require('./combat');
+const { updateZombies } = require('./zombies');
 
 function startGameLoops(io, rooms) {
   const tickMs = 1000 / TICK_RATE;
@@ -10,8 +11,10 @@ function startGameLoops(io, rooms) {
   setInterval(() => {
     rooms.forEachRoom((room) => {
       const dt = tickMs / 1000;
+      const now = Date.now();
       stepPlayers(room.state, dt);
-      updateShooting(io, room);
+      updateZombies(room.state, dt, now);
+      updateShooting(io, room, now);
       room.state.lastSnapshot += tickMs;
       if (room.state.lastSnapshot >= snapshotMs) {
         room.state.lastSnapshot = 0;
@@ -45,6 +48,12 @@ function sendSnapshot(io, room) {
       x: p.x,
       y: p.y,
       lastInputSeq: p.lastInputSeq
+    })),
+    zombies: Array.from(room.state.zombies.values()).map((z) => ({
+      id: z.id,
+      x: z.x,
+      y: z.y,
+      hp: z.hp
     })),
     serverTime: Date.now()
   };

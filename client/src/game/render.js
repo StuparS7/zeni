@@ -3,6 +3,8 @@ const OTHER_COLOR = '#c18cf9';
 const SELF_COLOR = '#6ef5ff';
 const OBSTACLE_FILL = '#2a3144';
 const OBSTACLE_EDGE = '#55607a';
+const ZOMBIE_COLOR = '#b84a4a';
+const ZOMBIE_EDGE = '#5a1f1f';
 
 export function render(ctx, state) {
   const canvas = ctx.canvas;
@@ -13,6 +15,7 @@ export function render(ctx, state) {
   drawGrid(ctx);
   drawObstacles(ctx, state);
   drawShots(ctx, state);
+  drawZombies(ctx, state);
 
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
@@ -84,6 +87,23 @@ function drawShots(ctx, state) {
     ctx.beginPath();
     ctx.moveTo(sx, sy);
     ctx.lineTo(ex, ey);
+    ctx.stroke();
+  });
+}
+
+function drawZombies(ctx, state) {
+  if (!state.zombies?.size) return;
+  const centerX = ctx.canvas.width / 2;
+  const centerY = ctx.canvas.height / 2;
+  state.zombies.forEach((z) => {
+    const screenX = centerX + z.renderX * 12;
+    const screenY = centerY + z.renderY * 12;
+    ctx.beginPath();
+    ctx.fillStyle = ZOMBIE_COLOR;
+    ctx.strokeStyle = ZOMBIE_EDGE;
+    ctx.lineWidth = 2;
+    ctx.arc(screenX, screenY, 12, 0, Math.PI * 2);
+    ctx.fill();
     ctx.stroke();
   });
 }

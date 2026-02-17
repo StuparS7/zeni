@@ -7,6 +7,9 @@ export function startLoop(state, input, ctx) {
   function frame(now) {
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
+    resizeCanvas(ctx.canvas);
+    state.__canvasWidth = ctx.canvas.width;
+    state.__canvasHeight = ctx.canvas.height;
     step(state, input, dt);
     render(ctx, state);
     requestAnimationFrame(frame);
@@ -15,6 +18,18 @@ export function startLoop(state, input, ctx) {
 }
 
 function step(state, input, dt) {
+  // Update aim angle from mouse position relative to local player screen position
+  const local = state.players.get(state.localId);
+  if (local && input.mouse) {
+    const centerX = state.__canvasWidth ? state.__canvasWidth / 2 : 0;
+    const centerY = state.__canvasHeight ? state.__canvasHeight / 2 : 0;
+    const px = centerX + local.renderX * 12;
+    const py = centerY + local.renderY * 12;
+    const dx = input.mouse.x - px;
+    const dy = input.mouse.y - py;
+    input.flags.angle = Math.atan2(dy, dx);
+  }
+
   state.players.forEach((p) => {
     // client-side prediction for our own player
     if (p.id === state.localId) {
@@ -32,10 +47,25 @@ function step(state, input, dt) {
     p.renderY += (p.targetY - p.renderY) * SMOOTHING;
   });
 
+  state.zombies?.forEach((z) => {
+    z.renderX += (z.targetX - z.renderX) * SMOOTHING;
+    z.renderY += (z.targetY - z.renderY) * SMOOTHING;
+  });
+
   if (state.shots?.length) {
     state.shots.forEach((s) => {
       s.ttl -= dt;
     });
     state.shots = state.shots.filter((s) => s.ttl > 0);
+  }
+}
+
+function resizeCanvas(canvas) {
+  const rect = canvas.getBoundingClientRect();
+  const width = Math.max(1, Math.floor(rect.width));
+  const height = Math.max(1, Math.floor(rect.height));
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
   }
 }

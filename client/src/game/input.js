@@ -7,6 +7,7 @@ export function createInput(canvas) {
     angle: 0,
     shoot: false
   };
+  const mouse = { x: 0, y: 0 };
 
   const keys = {
     w: 'up',
@@ -34,11 +35,8 @@ export function createInput(canvas) {
 
   canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const dx = e.clientX - cx;
-    const dy = e.clientY - cy;
-    flags.angle = Math.atan2(dy, dx);
+    mouse.x = e.clientX - rect.left;
+    mouse.y = e.clientY - rect.top;
   });
 
   canvas.addEventListener('mousedown', (e) => {
@@ -48,5 +46,5 @@ export function createInput(canvas) {
     if (e.button === 0) flags.shoot = false;
   });
 
-  return { flags };
+  return { flags, mouse };
 }

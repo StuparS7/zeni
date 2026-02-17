@@ -15,6 +15,7 @@ const joinBtn = document.getElementById('joinBtn');
 
 const state = {
   players: new Map(),
+  zombies: new Map(),
   localId: null,
   roomCode: null,
   obstacles: [],
@@ -103,6 +104,32 @@ function mergeSnapshot(snapshot) {
   // remove players that vanished
   Array.from(state.players.keys()).forEach((id) => {
     if (!seen.has(id)) state.players.delete(id);
+  });
+
+  mergeZombies(snapshot.zombies || []);
+}
+
+function mergeZombies(zombies) {
+  const seen = new Set();
+  zombies.forEach((z) => {
+    seen.add(z.id);
+    if (!state.zombies.has(z.id)) {
+      state.zombies.set(z.id, {
+        id: z.id,
+        renderX: z.x,
+        renderY: z.y,
+        targetX: z.x,
+        targetY: z.y,
+        hp: z.hp
+      });
+    }
+    const local = state.zombies.get(z.id);
+    local.targetX = z.x;
+    local.targetY = z.y;
+    local.hp = z.hp;
+  });
+  Array.from(state.zombies.keys()).forEach((id) => {
+    if (!seen.has(id)) state.zombies.delete(id);
   });
 }
 

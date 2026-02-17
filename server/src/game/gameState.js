@@ -3,7 +3,12 @@ const { WORLD_BOUNDS } = require('../shared/constants');
 function createGameState() {
   return {
     players: new Map(),
-    lastSnapshot: 0
+    zombies: new Map(),
+    lastSnapshot: 0,
+    nextZombieId: 1,
+    spawnEnabled: false,
+    spawnStartAt: 0,
+    nextSpawnAt: 0
   };
 }
 
