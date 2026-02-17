@@ -4,7 +4,8 @@ export function createInput(canvas) {
     down: false,
     left: false,
     right: false,
-    mouseAngle: 0
+    angle: 0,
+    shoot: false
   };
 
   const keys = {
@@ -37,7 +38,14 @@ export function createInput(canvas) {
     const cy = rect.top + rect.height / 2;
     const dx = e.clientX - cx;
     const dy = e.clientY - cy;
-    flags.mouseAngle = Math.atan2(dy, dx);
+    flags.angle = Math.atan2(dy, dx);
+  });
+
+  canvas.addEventListener('mousedown', (e) => {
+    if (e.button === 0) flags.shoot = true;
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (e.button === 0) flags.shoot = false;
   });
 
   return { flags };

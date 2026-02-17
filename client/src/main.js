@@ -1,6 +1,7 @@
 import { connectSocket } from './net/socket.js';
 import { createInput } from './game/input.js';
 import { startLoop } from './game/loop.js';
+import { SHOT_TTL } from './shared/constants.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -15,7 +16,9 @@ const joinBtn = document.getElementById('joinBtn');
 const state = {
   players: new Map(),
   localId: null,
-  roomCode: null
+  roomCode: null,
+  obstacles: [],
+  shots: []
 };
 
 const input = createInput(canvas);
@@ -40,6 +43,9 @@ joinBtn.addEventListener('click', () => {
         setStatus(`In room ${data.roomCode}`);
         roomInfo.textContent = `Room: ${data.roomCode}`;
         updatePlayersUI(data.players);
+        if (data.map?.obstacles) {
+          state.obstacles = data.map.obstacles;
+        }
         overlay.style.display = 'none';
       },
       onPlayersUpdate: (payload) => {
@@ -53,6 +59,16 @@ joinBtn.addEventListener('click', () => {
       onSnapshot: (data) => {
         mergeSnapshot(data);
         updatePlayersUI(data.players);
+      },
+      onShot: (data) => {
+        state.shots.push({
+          shooterId: data.shooterId,
+          sx: data.sx,
+          sy: data.sy,
+          ex: data.ex,
+          ey: data.ey,
+          ttl: SHOT_TTL
+        });
       },
       onError: (msg) => {
         setStatus(msg);

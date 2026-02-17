@@ -19,6 +19,10 @@ export function connectSocket({ roomCode, playerName, inputState, handlers }) {
     handlers?.onPlayersUpdate?.(data);
   });
 
+  socket.on(EVENTS.SHOT, (data) => {
+    handlers?.onShot?.(data);
+  });
+
   socket.on(EVENTS.SNAPSHOT, (data) => {
     handlers?.onSnapshot?.(data);
   });

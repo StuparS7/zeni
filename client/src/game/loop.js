@@ -1,5 +1,6 @@
 import { PLAYER_SPEED, SMOOTHING } from '../shared/constants.js';
 import { render } from './render.js';
+import { resolvePlayerCollisions } from './map.js';
 
 export function startLoop(state, input, ctx) {
   let last = performance.now();
@@ -22,9 +23,19 @@ function step(state, input, dt) {
       const mag = Math.hypot(dx, dy) || 1;
       p.renderX += (dx / mag) * PLAYER_SPEED * dt;
       p.renderY += (dy / mag) * PLAYER_SPEED * dt;
+      if (state.obstacles?.length) {
+        resolvePlayerCollisions(p, state.obstacles);
+      }
     }
     // reconcile toward server truth
     p.renderX += (p.targetX - p.renderX) * SMOOTHING;
     p.renderY += (p.targetY - p.renderY) * SMOOTHING;
   });
+
+  if (state.shots?.length) {
+    state.shots.forEach((s) => {
+      s.ttl -= dt;
+    });
+    state.shots = state.shots.filter((s) => s.ttl > 0);
+  }
 }

@@ -32,11 +32,14 @@ function createPlayer(id, name, index) {
     y: pos.y,
     dir: 0,
     lastInputSeq: 0,
+    lastShotAt: 0,
     input: {
       up: false,
       down: false,
       left: false,
-      right: false
+      right: false,
+      shoot: false,
+      angle: 0
     }
   };
 }

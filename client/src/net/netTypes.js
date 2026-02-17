@@ -4,5 +4,6 @@ export const EVENTS = {
   PLAYERS_UPDATE: 'playersUpdate',
   INPUT: 'input',
   SNAPSHOT: 'snapshot',
+  SHOT: 'shot',
   ROOM_FULL: 'roomFull'
 };

@@ -6,6 +6,7 @@ const Rooms = require('./rooms');
 const { EVENTS } = require('./shared/schema');
 const { MAX_PLAYERS } = require('./shared/constants');
 const { startGameLoops } = require('./game/tick');
+const { OBSTACLES } = require('./game/map');
 
 const PORT = process.env.PORT || 3000;
 const DEFAULT_ROOM = 'DEMO';
@@ -38,7 +39,8 @@ io.on('connection', (socket) => {
     socket.emit(EVENTS.ROOM_JOINED, {
       roomCode,
       playerId: socket.id,
-      players: Array.from(room.state.players.values())
+      players: Array.from(room.state.players.values()),
+      map: { obstacles: OBSTACLES }
     });
     sendPlayersUpdate(roomCode);
   });
@@ -77,8 +79,19 @@ function sanitizeInput(raw) {
     up: !!raw.up,
     down: !!raw.down,
     left: !!raw.left,
-    right: !!raw.right
+    right: !!raw.right,
+    shoot: !!raw.shoot,
+    angle: typeof raw.angle === 'number' ? clampAngle(raw.angle) : 0
   };
+}
+
+function clampAngle(a) {
+  if (!Number.isFinite(a)) return 0;
+  const twoPi = Math.PI * 2;
+  let v = a % twoPi;
+  if (v > Math.PI) v -= twoPi;
+  if (v < -Math.PI) v += twoPi;
+  return v;
 }
 
 server.listen(PORT, () => {

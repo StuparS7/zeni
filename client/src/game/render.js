@@ -1,6 +1,8 @@
 const BG = '#0e1624';
 const OTHER_COLOR = '#c18cf9';
 const SELF_COLOR = '#6ef5ff';
+const OBSTACLE_FILL = '#2a3144';
+const OBSTACLE_EDGE = '#55607a';
 
 export function render(ctx, state) {
   const canvas = ctx.canvas;
@@ -9,6 +11,8 @@ export function render(ctx, state) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   drawGrid(ctx);
+  drawObstacles(ctx, state);
+  drawShots(ctx, state);
 
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
@@ -47,4 +51,39 @@ function drawGrid(ctx) {
     ctx.lineTo(width, y);
     ctx.stroke();
   }
+}
+
+function drawObstacles(ctx, state) {
+  if (!state.obstacles?.length) return;
+  const centerX = ctx.canvas.width / 2;
+  const centerY = ctx.canvas.height / 2;
+  state.obstacles.forEach((o) => {
+    const screenX = centerX + o.x * 12;
+    const screenY = centerY + o.y * 12;
+    const w = o.w * 12;
+    const h = o.h * 12;
+    ctx.fillStyle = OBSTACLE_FILL;
+    ctx.strokeStyle = OBSTACLE_EDGE;
+    ctx.lineWidth = 2;
+    ctx.fillRect(screenX - w / 2, screenY - h / 2, w, h);
+    ctx.strokeRect(screenX - w / 2, screenY - h / 2, w, h);
+  });
+}
+
+function drawShots(ctx, state) {
+  if (!state.shots?.length) return;
+  const centerX = ctx.canvas.width / 2;
+  const centerY = ctx.canvas.height / 2;
+  state.shots.forEach((s) => {
+    const sx = centerX + s.sx * 12;
+    const sy = centerY + s.sy * 12;
+    const ex = centerX + s.ex * 12;
+    const ey = centerY + s.ey * 12;
+    ctx.strokeStyle = `rgba(255, 245, 200, ${Math.max(0.2, s.ttl * 6)})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+  });
 }
