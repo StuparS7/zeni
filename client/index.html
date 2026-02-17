@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zombie Wave Shooter - M1</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="overlay" class="panel">
+    <h1>Zombie Lobby</h1>
+    <label>
+      Name
+      <input id="nameInput" maxlength="16" placeholder="Player" />
+    </label>
+    <label>
+      Room Code
+      <input id="roomInput" maxlength="6" placeholder="DEMO" />
+    </label>
+    <button id="joinBtn">Create / Join Room</button>
+    <div class="hint">Room is created if it doesn't exist.</div>
+  </div>
+
+  <div id="hud">
+    <div id="status">Not connected</div>
+    <div id="roomInfo"></div>
+    <div id="players"></div>
+  </div>
+  <canvas id="game" width="960" height="540"></canvas>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
