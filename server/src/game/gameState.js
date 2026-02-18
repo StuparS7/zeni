@@ -1,14 +1,21 @@
-const { WORLD_BOUNDS } = require('../shared/constants');
+const { WORLD_BOUNDS, DEFAULT_WEAPON_ID, PLAYER_MAX_HP, WEAPONS } = require('../shared/constants');
+const { createVehicles } = require('./vehicles');
+const { createAmmoPickups } = require('./ammo');
 
 function createGameState() {
   return {
     players: new Map(),
     zombies: new Map(),
+    vehicles: createVehicles(),
+    ammoPickups: createAmmoPickups(),
     lastSnapshot: 0,
     nextZombieId: 1,
     spawnEnabled: false,
     spawnStartAt: 0,
-    nextSpawnAt: 0
+    nextSpawnAt: 0,
+    round: 0,
+    roundEndsAt: 0,
+    roundActive: false
   };
 }
 
@@ -38,15 +45,35 @@ function createPlayer(id, name, index) {
     dir: 0,
     lastInputSeq: 0,
     lastShotAt: 0,
+    lastInteractAt: 0,
+    score: 0,
+    hp: PLAYER_MAX_HP,
+    alive: true,
+    inVehicle: false,
+    vehicleId: null,
+    weaponId: DEFAULT_WEAPON_ID,
+    ammo: initAmmo(),
     input: {
       up: false,
       down: false,
       left: false,
       right: false,
       shoot: false,
-      angle: 0
+      angle: 0,
+      interact: false
     }
   };
+}
+
+function initAmmo() {
+  const ammo = {};
+  Object.values(WEAPONS).forEach((w) => {
+    ammo[w.id] = {
+      mag: w.magSize,
+      reserve: 0
+    };
+  });
+  return ammo;
 }
 
 module.exports = {

@@ -5,7 +5,8 @@ export function createInput(canvas) {
     left: false,
     right: false,
     angle: 0,
-    shoot: false
+    shoot: false,
+    interact: false
   };
   const mouse = { x: 0, y: 0 };
 
@@ -25,12 +26,14 @@ export function createInput(canvas) {
     if (key) {
       flags[key] = true;
     }
+    if (e.key === 'e' || e.key === 'E') flags.interact = true;
   });
   window.addEventListener('keyup', (e) => {
     const key = keys[e.key];
     if (key) {
       flags[key] = false;
     }
+    if (e.key === 'e' || e.key === 'E') flags.interact = false;
   });
 
   canvas.addEventListener('mousemove', (e) => {
@@ -45,6 +48,7 @@ export function createInput(canvas) {
   window.addEventListener('mouseup', (e) => {
     if (e.button === 0) flags.shoot = false;
   });
+
 
   return { flags, mouse };
 }

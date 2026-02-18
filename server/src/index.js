@@ -7,6 +7,8 @@ const { EVENTS } = require('./shared/schema');
 const { MAX_PLAYERS } = require('./shared/constants');
 const { startGameLoops } = require('./game/tick');
 const { OBSTACLES } = require('./game/map');
+const { WEAPON_SPAWNS } = require('./game/weapons');
+const { startRound } = require('./game/zombies');
 
 const PORT = process.env.PORT || 3000;
 const DEFAULT_ROOM = 'DEMO';
@@ -40,7 +42,7 @@ io.on('connection', (socket) => {
       roomCode,
       playerId: socket.id,
       players: Array.from(room.state.players.values()),
-      map: { obstacles: OBSTACLES }
+      map: { obstacles: OBSTACLES, weapons: WEAPON_SPAWNS }
     });
     sendPlayersUpdate(roomCode);
   });
@@ -57,6 +59,15 @@ io.on('connection', (socket) => {
     player.lastInputSeq = typeof data.seq === 'number' ? data.seq : player.lastInputSeq;
   });
 
+  socket.on(EVENTS.START_ROUND, () => {
+    const roomCode = rooms.socketToRoom.get(socket.id);
+    if (!roomCode) return;
+    const room = rooms.getRoom(roomCode);
+    if (!room) return;
+    const now = Date.now();
+    startRound(room.state, now);
+  });
+
   socket.on('disconnect', () => {
     const code = rooms.socketToRoom.get(socket.id);
     rooms.removePlayer(socket.id);
@@ -69,7 +80,9 @@ function sendPlayersUpdate(roomCode) {
   if (!room) return;
   const players = Array.from(room.state.players.values()).map((p) => ({
     id: p.id,
-    name: p.name
+    name: p.name,
+    score: p.score,
+    weaponId: p.weaponId
   }));
   io.to(roomCode).emit(EVENTS.PLAYERS_UPDATE, { roomCode, players });
 }
@@ -81,7 +94,8 @@ function sanitizeInput(raw) {
     left: !!raw.left,
     right: !!raw.right,
     shoot: !!raw.shoot,
-    angle: typeof raw.angle === 'number' ? clampAngle(raw.angle) : 0
+    angle: typeof raw.angle === 'number' ? clampAngle(raw.angle) : 0,
+    interact: !!raw.interact
   };
 }
 

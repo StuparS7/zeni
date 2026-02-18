@@ -22,9 +22,27 @@
   </div>
 
   <div id="hud">
+    <div class="hud-title">IN ROOM</div>
     <div id="status">Not connected</div>
     <div id="roomInfo"></div>
+    <div id="score">Score: 0 | HP: 100</div>
+    <div id="weapon">Weapon: Pistol</div>
+    <div id="roundInfo">Round: stopped</div>
+    <button id="startRoundBtn">Start Round</button>
+    <div id="prompt"></div>
     <div id="players"></div>
+  </div>
+
+  <div id="bottomHud">
+    <div class="weapon-panel">
+      <div class="weapon-label">Weapon</div>
+      <div id="weaponName" class="weapon-name">PISTOL</div>
+    </div>
+    <div id="ammo" class="ammo">15 / 30</div>
+  </div>
+  <div id="hpPanel">
+    <div class="hp-label">HP</div>
+    <div id="hpValue" class="hp-value">100</div>
   </div>
   <canvas id="game" width="960" height="540"></canvas>
 

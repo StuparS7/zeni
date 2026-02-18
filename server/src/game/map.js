@@ -1,22 +1,82 @@
 const { PLAYER_RADIUS } = require('../shared/constants');
 
+const WALL_T = 1.4;
+const DOOR_W = 3.2;
+
+const SOLIDS = [
+  { id: 'square-1', x: -8, y: -6, w: 10, h: 4, hgt: 0.4 },
+  { id: 'square-2', x: 8, y: -6, w: 10, h: 4, hgt: 0.4 },
+  { id: 'well', x: 0, y: 6, w: 4, h: 4, hgt: 0.8 }
+];
+
+const BUILDINGS = [
+  // North row houses (two entrances each: N/S)
+  { id: 'house-n1', x: -50, y: -30, w: 14, h: 10, hgt: 1.6, doors: ['N', 'S'] },
+  { id: 'house-n2', x: -30, y: -30, w: 14, h: 10, hgt: 1.6, doors: ['N', 'S'] },
+  { id: 'house-n3', x: -10, y: -30, w: 14, h: 10, hgt: 1.6, doors: ['N', 'S'] },
+  { id: 'house-n4', x: 10, y: -30, w: 14, h: 10, hgt: 1.6, doors: ['N', 'S'] },
+  { id: 'house-n5', x: 30, y: -30, w: 14, h: 10, hgt: 1.6, doors: ['N', 'S'] },
+  { id: 'house-n6', x: 50, y: -30, w: 14, h: 10, hgt: 1.6, doors: ['N', 'S'] },
+
+  // South row houses (two entrances each: N/S)
+  { id: 'house-s1', x: -50, y: 30, w: 14, h: 10, hgt: 1.6, doors: ['N', 'S'] },
+  { id: 'house-s2', x: -30, y: 30, w: 14, h: 10, hgt: 1.6, doors: ['N', 'S'] },
+  { id: 'house-s3', x: -10, y: 30, w: 14, h: 10, hgt: 1.6, doors: ['N', 'S'] },
+  { id: 'house-s4', x: 10, y: 30, w: 14, h: 10, hgt: 1.6, doors: ['N', 'S'] },
+  { id: 'house-s5', x: 30, y: 30, w: 14, h: 10, hgt: 1.6, doors: ['N', 'S'] },
+  { id: 'house-s6', x: 50, y: 30, w: 14, h: 10, hgt: 1.6, doors: ['N', 'S'] },
+
+  // East/West barns (entrances on E/W)
+  { id: 'barn-w1', x: -78, y: -8, w: 18, h: 12, hgt: 2.2, doors: ['E', 'W'] },
+  { id: 'barn-w2', x: -78, y: 18, w: 18, h: 12, hgt: 2.2, doors: ['E', 'W'] },
+  { id: 'barn-e1', x: 78, y: -8, w: 18, h: 12, hgt: 2.2, doors: ['E', 'W'] },
+  { id: 'barn-e2', x: 78, y: 18, w: 18, h: 12, hgt: 2.2, doors: ['E', 'W'] }
+];
+
+const EDGE_WALLS = [
+  { id: 'wall-north', x: 0, y: -58, w: 70, h: 3, hgt: 1.2 },
+  { id: 'wall-south', x: 0, y: 58, w: 70, h: 3, hgt: 1.2 },
+  { id: 'wall-west', x: -96, y: 0, w: 3, h: 70, hgt: 1.2 },
+  { id: 'wall-east', x: 96, y: 0, w: 3, h: 70, hgt: 1.2 }
+];
+
 const OBSTACLES = [
-  { id: 'crate-1', x: -6, y: 0, w: 4, h: 3 },
-  { id: 'crate-2', x: 6, y: -2, w: 5, h: 2 },
-  { id: 'pillar-1', x: 0, y: 6, w: 3, h: 3 }
+  ...SOLIDS,
+  ...EDGE_WALLS,
+  ...buildWalls(BUILDINGS)
+];
+
+const ZOMBIE_SPAWNS = [
+  { x: -110, y: -70 },
+  { x: -60, y: -70 },
+  { x: 0, y: -70 },
+  { x: 60, y: -70 },
+  { x: 110, y: -70 },
+  { x: -110, y: 0 },
+  { x: 110, y: 0 },
+  { x: -110, y: 70 },
+  { x: -60, y: 70 },
+  { x: 0, y: 70 },
+  { x: 60, y: 70 },
+  { x: 110, y: 70 }
 ];
 
 function resolvePlayerCollisions(player) {
-  let x = player.x;
-  let y = player.y;
+  const result = resolveCircleCollisions(player.x, player.y, PLAYER_RADIUS);
+  player.x = result.x;
+  player.y = result.y;
+}
+
+function resolveCircleCollisions(x, y, radius) {
+  let cx = x;
+  let cy = y;
   for (let i = 0; i < OBSTACLES.length; i += 1) {
     const rect = OBSTACLES[i];
-    const result = pushCircleOutOfRect(x, y, PLAYER_RADIUS, rect);
-    x = result.x;
-    y = result.y;
+    const result = pushCircleOutOfRect(cx, cy, radius, rect);
+    cx = result.x;
+    cy = result.y;
   }
-  player.x = x;
-  player.y = y;
+  return { x: cx, y: cy };
 }
 
 function raycastObstacles(ox, oy, dx, dy, maxRange) {
@@ -106,5 +166,55 @@ function clamp(v, min, max) {
 module.exports = {
   OBSTACLES,
   resolvePlayerCollisions,
-  raycastObstacles
+  resolveCircleCollisions,
+  raycastObstacles,
+  ZOMBIE_SPAWNS
 };
+
+function buildWalls(buildings) {
+  const walls = [];
+  buildings.forEach((b) => {
+    const doors = new Set(b.doors || []);
+    const halfW = b.w / 2;
+    const halfH = b.h / 2;
+    const hgt = b.hgt || 1.4;
+
+    // North wall
+    addWallSegment(walls, `${b.id}-n`, b.x, b.y - halfH + WALL_T / 2, b.w, WALL_T, hgt, doors.has('N'));
+    // South wall
+    addWallSegment(walls, `${b.id}-s`, b.x, b.y + halfH - WALL_T / 2, b.w, WALL_T, hgt, doors.has('S'));
+    // West wall
+    addWallSegmentVertical(walls, `${b.id}-w`, b.x - halfW + WALL_T / 2, b.y, WALL_T, b.h, hgt, doors.has('W'));
+    // East wall
+    addWallSegmentVertical(walls, `${b.id}-e`, b.x + halfW - WALL_T / 2, b.y, WALL_T, b.h, hgt, doors.has('E'));
+  });
+  return walls;
+}
+
+function addWallSegment(list, baseId, x, y, w, h, hgt, hasDoor) {
+  if (!hasDoor) {
+    list.push({ id: baseId, x, y, w, h, hgt });
+    return;
+  }
+  const halfW = w / 2;
+  const segLen = halfW - DOOR_W / 2;
+  if (segLen <= 0) return;
+  const leftX = x - DOOR_W / 2 - segLen / 2;
+  const rightX = x + DOOR_W / 2 + segLen / 2;
+  list.push({ id: `${baseId}-l`, x: leftX, y, w: segLen, h, hgt });
+  list.push({ id: `${baseId}-r`, x: rightX, y, w: segLen, h, hgt });
+}
+
+function addWallSegmentVertical(list, baseId, x, y, w, h, hgt, hasDoor) {
+  if (!hasDoor) {
+    list.push({ id: baseId, x, y, w, h, hgt });
+    return;
+  }
+  const halfH = h / 2;
+  const segLen = halfH - DOOR_W / 2;
+  if (segLen <= 0) return;
+  const topY = y - DOOR_W / 2 - segLen / 2;
+  const bottomY = y + DOOR_W / 2 + segLen / 2;
+  list.push({ id: `${baseId}-t`, x, y: topY, w, h: segLen, hgt });
+  list.push({ id: `${baseId}-b`, x, y: bottomY, w, h: segLen, hgt });
+}

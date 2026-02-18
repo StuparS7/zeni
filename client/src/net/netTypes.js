@@ -5,5 +5,6 @@ export const EVENTS = {
   INPUT: 'input',
   SNAPSHOT: 'snapshot',
   SHOT: 'shot',
+  START_ROUND: 'startRound',
   ROOM_FULL: 'roomFull'
 };

@@ -23,21 +23,30 @@ function step(state, input, dt) {
   if (local && input.mouse) {
     const centerX = state.__canvasWidth ? state.__canvasWidth / 2 : 0;
     const centerY = state.__canvasHeight ? state.__canvasHeight / 2 : 0;
-    const px = centerX + local.renderX * 12;
-    const py = centerY + local.renderY * 12;
-    const dx = input.mouse.x - px;
-    const dy = input.mouse.y - py;
-    input.flags.angle = Math.atan2(dy, dx);
+    // Camera centers on local player, so their screen position is canvas center.
+    const sx = input.mouse.x - centerX;
+    const sy = input.mouse.y - centerY;
+    const scale = state.renderScale || 20;
+    const worldDx = sx / scale;
+    const worldDy = sy / scale;
+    input.flags.angle = Math.atan2(worldDy, worldDx);
   }
 
   state.players.forEach((p) => {
+    const oldX = p.renderX;
+    const oldY = p.renderY;
+    const isLocal = p.id === state.localId;
+    let inputDx = 0;
+    let inputDy = 0;
     // client-side prediction for our own player
-    if (p.id === state.localId) {
-      const dx = (input.flags.right ? 1 : 0) + (input.flags.left ? -1 : 0);
-      const dy = (input.flags.down ? 1 : 0) + (input.flags.up ? -1 : 0);
-      const mag = Math.hypot(dx, dy) || 1;
-      p.renderX += (dx / mag) * PLAYER_SPEED * dt;
-      p.renderY += (dy / mag) * PLAYER_SPEED * dt;
+    if (isLocal) {
+      inputDx = (input.flags.right ? 1 : 0) + (input.flags.left ? -1 : 0);
+      inputDy = (input.flags.down ? 1 : 0) + (input.flags.up ? -1 : 0);
+      if (inputDx !== 0 || inputDy !== 0) {
+        const mag = Math.hypot(inputDx, inputDy) || 1;
+        p.renderX += (inputDx / mag) * PLAYER_SPEED * dt;
+        p.renderY += (inputDy / mag) * PLAYER_SPEED * dt;
+      }
       if (state.obstacles?.length) {
         resolvePlayerCollisions(p, state.obstacles);
       }
@@ -45,11 +54,26 @@ function step(state, input, dt) {
     // reconcile toward server truth
     p.renderX += (p.targetX - p.renderX) * SMOOTHING;
     p.renderY += (p.targetY - p.renderY) * SMOOTHING;
+
+    const vx = p.renderX - oldX;
+    const vy = p.renderY - oldY;
+    if (isLocal && (inputDx !== 0 || inputDy !== 0)) {
+      p.facing = Math.atan2(inputDy, inputDx);
+    } else if (vx * vx + vy * vy > 0.0004) {
+      p.facing = Math.atan2(vy, vx);
+    } else if (!Number.isFinite(p.facing)) {
+      p.facing = 0;
+    }
   });
 
   state.zombies?.forEach((z) => {
     z.renderX += (z.targetX - z.renderX) * SMOOTHING;
     z.renderY += (z.targetY - z.renderY) * SMOOTHING;
+  });
+
+  state.vehicles?.forEach((v) => {
+    v.renderX += (v.targetX - v.renderX) * SMOOTHING;
+    v.renderY += (v.targetY - v.renderY) * SMOOTHING;
   });
 
   if (state.shots?.length) {

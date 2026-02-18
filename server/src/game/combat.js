@@ -1,19 +1,34 @@
 const { EVENTS } = require('../shared/schema');
-const { SHOOT_COOLDOWN_MS, SHOOT_RANGE, SHOOT_DAMAGE } = require('../shared/constants');
+const { KILL_POINTS, WEAPONS, DEFAULT_WEAPON_ID } = require('../shared/constants');
 const { raycastObstacles } = require('./map');
 
 function updateShooting(io, room, now = Date.now()) {
   room.state.players.forEach((p) => {
+    if (!p.alive) return;
     if (!p.input.shoot) return;
-    if (now - p.lastShotAt < SHOOT_COOLDOWN_MS) return;
+    const weapon = WEAPONS[p.weaponId] || WEAPONS[DEFAULT_WEAPON_ID];
+    if (!weapon) return;
+    if (now - p.lastShotAt < weapon.cooldownMs) return;
+
+    const ammo = p.ammo[weapon.id];
+    if (!ammo) return;
+    if (ammo.mag <= 0) {
+      if (ammo.reserve > 0) {
+        const load = Math.min(weapon.magSize, ammo.reserve);
+        ammo.mag = load;
+        ammo.reserve -= load;
+      }
+    }
+    if (ammo.mag <= 0) return;
     p.lastShotAt = now;
+    ammo.mag -= 1;
 
     const angle = Number.isFinite(p.input.angle) ? p.input.angle : 0;
     const dx = Math.cos(angle);
     const dy = Math.sin(angle);
 
-    let maxDist = SHOOT_RANGE;
-    const obsHit = raycastObstacles(p.x, p.y, dx, dy, SHOOT_RANGE);
+    let maxDist = weapon.range;
+    const obsHit = raycastObstacles(p.x, p.y, dx, dy, maxDist);
     if (obsHit) maxDist = obsHit.distance;
 
     const zombieHit = raycastZombies(room.state, p.x, p.y, dx, dy, maxDist);
@@ -28,14 +43,16 @@ function updateShooting(io, room, now = Date.now()) {
     const ey = p.y + dy * hitDist;
 
     if (hitZombie) {
-      hitZombie.hp -= SHOOT_DAMAGE;
+      hitZombie.hp -= weapon.damage;
       if (hitZombie.hp <= 0) {
         room.state.zombies.delete(hitZombie.id);
+        p.score += KILL_POINTS;
       }
     }
 
     io.to(room.code).emit(EVENTS.SHOT, {
       shooterId: p.id,
+      weaponId: weapon.id,
       sx: p.x,
       sy: p.y,
       ex,
