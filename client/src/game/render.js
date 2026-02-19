@@ -1,4 +1,15 @@
-import { WORLD_BOUNDS, ISO_TILE_W, ISO_TILE_H, WEAPONS, CAMERA_TILT, PLAYER_SPRITE_FORCE_SINGLE } from '../shared/constants.js';
+import {
+  WORLD_BOUNDS,
+  ISO_TILE_W,
+  ISO_TILE_H,
+  WEAPONS,
+  CAMERA_TILT,
+  PLAYER_SPRITE_FORCE_SINGLE,
+  CAR_SPRITE_HIDE_LIGHTS,
+  CAR_SPRITE_HIDE_SHADOW,
+  CAR_SPRITE_SCALE,
+  CAR_SPRITE_CLEAN_EDGES
+} from '../shared/constants.js';
 
 const BG = '#0e1624';
 const OTHER_COLOR = '#c18cf9';
@@ -24,6 +35,18 @@ playerSprite.src = 'assets/player.png';
 let playerSpriteReady = false;
 playerSprite.onload = () => {
   playerSpriteReady = true;
+};
+
+const carSprite = new Image();
+carSprite.src = 'assets/car.png';
+let carSpriteReady = false;
+let carSpriteTexture = null;
+carSprite.onload = () => {
+  carSpriteReady = true;
+  carSpriteTexture = carSprite;
+  if (CAR_SPRITE_HIDE_LIGHTS) {
+    carSpriteTexture = buildCarSpriteTexture(carSprite);
+  }
 };
 const PLAYER_SPRITE_FPS = 10;
 const PLAYER_SPRITE_DIR_MAP_GRID = {
@@ -252,53 +275,68 @@ function drawVehicles(ctx, state, cam) {
     ctx.rotate(angle);
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.beginPath();
-    ctx.ellipse(0, 0, bodyLen * 0.55, bodyWid * 0.55, 0, 0, Math.PI * 2);
-    ctx.fill();
+    if (!CAR_SPRITE_HIDE_SHADOW) {
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, bodyLen * 0.55, bodyWid * 0.55, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
-    // Body
-    ctx.fillStyle = VEHICLE_FILL;
-    ctx.strokeStyle = VEHICLE_EDGE;
-    ctx.lineWidth = 2;
-    roundedRect(ctx, -bodyLen / 2, -bodyWid / 2, bodyLen, bodyWid, bodyWid * 0.35);
-    ctx.fill();
-    ctx.stroke();
+    if (carSpriteReady) {
+      const sprite = carSpriteTexture || carSprite;
+      const aspect = sprite.width / sprite.height;
+      const spriteH = bodyWid * 2.0 * (CAR_SPRITE_SCALE || 1);
+      const spriteW = spriteH * aspect;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.globalAlpha = 1;
+      ctx.drawImage(sprite, -spriteW / 2, -spriteH / 2, spriteW, spriteH);
+    } else {
+      // Body
+      ctx.fillStyle = VEHICLE_FILL;
+      ctx.strokeStyle = VEHICLE_EDGE;
+      ctx.lineWidth = 2;
+      roundedRect(ctx, -bodyLen / 2, -bodyWid / 2, bodyLen, bodyWid, bodyWid * 0.35);
+      ctx.fill();
+      ctx.stroke();
 
-    // Hood + trunk lines
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    ctx.beginPath();
-    ctx.moveTo(bodyLen * 0.2, -bodyWid / 2 + 2);
-    ctx.lineTo(bodyLen * 0.2, bodyWid / 2 - 2);
-    ctx.moveTo(-bodyLen * 0.2, -bodyWid / 2 + 2);
-    ctx.lineTo(-bodyLen * 0.2, bodyWid / 2 - 2);
-    ctx.stroke();
+      // Hood + trunk lines
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.moveTo(bodyLen * 0.2, -bodyWid / 2 + 2);
+      ctx.lineTo(bodyLen * 0.2, bodyWid / 2 - 2);
+      ctx.moveTo(-bodyLen * 0.2, -bodyWid / 2 + 2);
+      ctx.lineTo(-bodyLen * 0.2, bodyWid / 2 - 2);
+      ctx.stroke();
 
-    // Roof
-    ctx.fillStyle = VEHICLE_ROOF;
-    roundedRect(ctx, -bodyLen * 0.15, -bodyWid * 0.32, bodyLen * 0.45, bodyWid * 0.64, bodyWid * 0.25);
-    ctx.fill();
+      // Roof
+      ctx.fillStyle = VEHICLE_ROOF;
+      roundedRect(ctx, -bodyLen * 0.15, -bodyWid * 0.32, bodyLen * 0.45, bodyWid * 0.64, bodyWid * 0.25);
+      ctx.fill();
 
-    // Windshield
-    ctx.fillStyle = 'rgba(120, 160, 200, 0.28)';
-    ctx.beginPath();
-    ctx.moveTo(bodyLen * 0.05, -bodyWid * 0.28);
-    ctx.lineTo(bodyLen * 0.3, -bodyWid * 0.2);
-    ctx.lineTo(bodyLen * 0.3, bodyWid * 0.2);
-    ctx.lineTo(bodyLen * 0.05, bodyWid * 0.28);
-    ctx.closePath();
-    ctx.fill();
+      // Windshield
+      ctx.fillStyle = 'rgba(120, 160, 200, 0.28)';
+      ctx.beginPath();
+      ctx.moveTo(bodyLen * 0.05, -bodyWid * 0.28);
+      ctx.lineTo(bodyLen * 0.3, -bodyWid * 0.2);
+      ctx.lineTo(bodyLen * 0.3, bodyWid * 0.2);
+      ctx.lineTo(bodyLen * 0.05, bodyWid * 0.28);
+      ctx.closePath();
+      ctx.fill();
+    }
 
-    // Wheels (front wheels steer)
-    ctx.fillStyle = '#0d1117';
-    const steer = v.steer || 0;
-    const rearX = -bodyLen * 0.32;
-    const frontX = bodyLen * 0.22;
-    const wheelY = bodyWid * 0.53;
-    drawWheel(ctx, rearX, -wheelY, wheelW, wheelH, 0);
-    drawWheel(ctx, rearX, wheelY, wheelW, wheelH, 0);
-    drawWheel(ctx, frontX, -wheelY, wheelW, wheelH, steer);
-    drawWheel(ctx, frontX, wheelY, wheelW, wheelH, steer);
+    // Wheels (front wheels steer) for procedural car only
+    if (!carSpriteReady) {
+      ctx.fillStyle = '#0d1117';
+      const steer = v.steer || 0;
+      const rearX = -bodyLen * 0.32;
+      const frontX = bodyLen * 0.22;
+      const wheelY = bodyWid * 0.53;
+      drawWheel(ctx, rearX, -wheelY, wheelW, wheelH, 0);
+      drawWheel(ctx, rearX, wheelY, wheelW, wheelH, 0);
+      drawWheel(ctx, frontX, -wheelY, wheelW, wheelH, steer);
+      drawWheel(ctx, frontX, wheelY, wheelW, wheelH, steer);
+    }
 
     // Headlights / taillights
     ctx.fillStyle = 'rgba(120, 200, 255, 0.9)';
@@ -307,14 +345,6 @@ function drawVehicles(ctx, state, cam) {
     ctx.fillStyle = 'rgba(255, 120, 120, 0.9)';
     ctx.fillRect(-bodyLen * 0.52, -bodyWid * 0.32, bodyLen * 0.06, bodyWid * 0.16);
     ctx.fillRect(-bodyLen * 0.52, bodyWid * 0.16, bodyLen * 0.06, bodyWid * 0.16);
-
-    // Driver indicator
-    if (v.driverId) {
-      ctx.fillStyle = v.driverId === state.localId ? SELF_COLOR : OTHER_COLOR;
-      ctx.beginPath();
-      ctx.arc(-bodyLen * 0.02, 0, 4, 0, Math.PI * 2);
-      ctx.fill();
-    }
 
     ctx.restore();
   });
@@ -496,6 +526,38 @@ function drawWheel(ctx, x, y, w, h, angle) {
   if (angle) ctx.rotate(angle);
   ctx.fillRect(-w / 2, -h / 2, w, h);
   ctx.restore();
+}
+
+function buildCarSpriteTexture(img) {
+  const c = document.createElement('canvas');
+  c.width = img.width;
+  c.height = img.height;
+  const cctx = c.getContext('2d');
+  cctx.drawImage(img, 0, 0);
+  const data = cctx.getImageData(0, 0, c.width, c.height);
+  const w = data.width;
+  const h = data.height;
+  const leftBand = Math.floor(w * 0.14);
+  const rightBand = Math.floor(w * 0.86);
+  const d = data.data;
+  for (let y = 0; y < h; y += 1) {
+    for (let x = 0; x < w; x += 1) {
+      if (x > leftBand && x < rightBand) continue;
+      const i = (y * w + x) * 4;
+      const r = d[i];
+      const g = d[i + 1];
+      const b = d[i + 2];
+      const a = d[i + 3];
+      if (a === 0) continue;
+      const isRed = r > 170 && g < 120 && b < 120;
+      const isBlue = b > 170 && r < 120 && g < 170;
+      if (isRed || isBlue) {
+        d[i + 3] = 0;
+      }
+    }
+  }
+  cctx.putImageData(data, 0, 0);
+  return c;
 }
 
 function drawMiniMap(ctx, state) {

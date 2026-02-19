@@ -20,3 +20,7 @@ export const VEHICLE_INTERACT_RADIUS = 2.2;
 export const PLAYER_MAX_HP = 100;
 export const WORLD_BOUNDS = { minX: -360, maxX: 360, minY: -240, maxY: 240 };
 export const PLAYER_SPRITE_FORCE_SINGLE = true;
+export const CAR_SPRITE_HIDE_LIGHTS = true;
+export const CAR_SPRITE_HIDE_SHADOW = true;
+export const CAR_SPRITE_SCALE = 0.75;
+export const CAR_SPRITE_CLEAN_EDGES = true;

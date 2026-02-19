@@ -26,6 +26,7 @@ const hpValueEl = document.getElementById('hpValue');
 const roundEl = document.getElementById('roundInfo');
 const promptEl = document.getElementById('prompt');
 const startRoundBtn = document.getElementById('startRoundBtn');
+const winBanner = document.getElementById('winBanner');
 const overlay = document.getElementById('overlay');
 const nameInput = document.getElementById('nameInput');
 const roomInput = document.getElementById('roomInput');
@@ -154,6 +155,7 @@ function mergeSnapshot(snapshot) {
   mergeZombies(snapshot.zombies || []);
   mergeVehicles(snapshot.vehicles || []);
   mergeAmmoPickups(snapshot.ammoPickups || []);
+  handleRoundWin(snapshot);
   state.roundActive = !!snapshot.roundActive;
   updateScoreUI();
   updateRoundUI(snapshot.round, snapshot.roundTimeLeft);
@@ -224,6 +226,16 @@ function updateRoundUI(round, timeLeftMs) {
   const seconds = Math.ceil(timeLeftMs / 1000);
   roundEl.textContent = `Round ${round} - ${seconds}s`;
   startRoundBtn.classList.add('hidden');
+}
+
+function handleRoundWin(snapshot) {
+  if (!winBanner) return;
+  if (snapshot.roundActive) return;
+  if (!snapshot.round || snapshot.round <= 0) return;
+  if (snapshot.roundTimeLeft > 0) return;
+  winBanner.classList.remove('hidden');
+  clearTimeout(winBanner._t);
+  winBanner._t = setTimeout(() => winBanner.classList.add('hidden'), 2000);
 }
 
 function updatePromptUI() {
