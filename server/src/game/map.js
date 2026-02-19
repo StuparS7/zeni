@@ -1,13 +1,13 @@
-const { PLAYER_RADIUS } = require('../shared/constants');
+const { PLAYER_RADIUS, WORLD_BOUNDS, MAP_SCALE } = require('../shared/constants');
 
-const WALL_T = 1.4;
-const DOOR_W = 3.2;
+const WALL_T = 1.4 * MAP_SCALE;
+const DOOR_W = 3.2 * MAP_SCALE;
 
 const SOLIDS = [
   { id: 'square-1', x: -8, y: -6, w: 10, h: 4, hgt: 0.4 },
   { id: 'square-2', x: 8, y: -6, w: 10, h: 4, hgt: 0.4 },
   { id: 'well', x: 0, y: 6, w: 4, h: 4, hgt: 0.8 }
-];
+].map(scaleRect);
 
 const BUILDINGS = [
   // North row houses (two entrances each: N/S)
@@ -31,19 +31,30 @@ const BUILDINGS = [
   { id: 'barn-w2', x: -78, y: 18, w: 18, h: 12, hgt: 2.2, doors: ['E', 'W'] },
   { id: 'barn-e1', x: 78, y: -8, w: 18, h: 12, hgt: 2.2, doors: ['E', 'W'] },
   { id: 'barn-e2', x: 78, y: 18, w: 18, h: 12, hgt: 2.2, doors: ['E', 'W'] }
+].map(scaleBuilding);
+
+const EDGE_THICKNESS = 3 * MAP_SCALE;
+const WORLD_W = WORLD_BOUNDS.maxX - WORLD_BOUNDS.minX;
+const WORLD_H = WORLD_BOUNDS.maxY - WORLD_BOUNDS.minY;
+const EDGE_WALLS = [
+  { id: 'wall-north', x: 0, y: WORLD_BOUNDS.minY + EDGE_THICKNESS / 2, w: WORLD_W, h: EDGE_THICKNESS, hgt: 1.2 },
+  { id: 'wall-south', x: 0, y: WORLD_BOUNDS.maxY - EDGE_THICKNESS / 2, w: WORLD_W, h: EDGE_THICKNESS, hgt: 1.2 },
+  { id: 'wall-west', x: WORLD_BOUNDS.minX + EDGE_THICKNESS / 2, y: 0, w: EDGE_THICKNESS, h: WORLD_H, hgt: 1.2 },
+  { id: 'wall-east', x: WORLD_BOUNDS.maxX - EDGE_THICKNESS / 2, y: 0, w: EDGE_THICKNESS, h: WORLD_H, hgt: 1.2 }
 ];
 
-const EDGE_WALLS = [
-  { id: 'wall-north', x: 0, y: -58, w: 70, h: 3, hgt: 1.2 },
-  { id: 'wall-south', x: 0, y: 58, w: 70, h: 3, hgt: 1.2 },
-  { id: 'wall-west', x: -96, y: 0, w: 3, h: 70, hgt: 1.2 },
-  { id: 'wall-east', x: 96, y: 0, w: 3, h: 70, hgt: 1.2 }
-];
+const SCATTER_OBSTACLES = createScatterObstacles({
+  count: 80,
+  seed: 1337,
+  minSize: 2.4,
+  maxSize: 6.2
+});
 
 const OBSTACLES = [
   ...SOLIDS,
   ...EDGE_WALLS,
-  ...buildWalls(BUILDINGS)
+  ...buildWalls(BUILDINGS),
+  ...SCATTER_OBSTACLES
 ];
 
 const ZOMBIE_SPAWNS = [
@@ -59,7 +70,7 @@ const ZOMBIE_SPAWNS = [
   { x: 0, y: 70 },
   { x: 60, y: 70 },
   { x: 110, y: 70 }
-];
+].map(scalePoint);
 
 function resolvePlayerCollisions(player) {
   const result = resolveCircleCollisions(player.x, player.y, PLAYER_RADIUS);
@@ -170,6 +181,73 @@ module.exports = {
   raycastObstacles,
   ZOMBIE_SPAWNS
 };
+
+function scaleRect(r) {
+  return { ...r, x: r.x * MAP_SCALE, y: r.y * MAP_SCALE, w: r.w * MAP_SCALE, h: r.h * MAP_SCALE };
+}
+
+function scaleBuilding(b) {
+  return { ...b, x: b.x * MAP_SCALE, y: b.y * MAP_SCALE, w: b.w * MAP_SCALE, h: b.h * MAP_SCALE };
+}
+
+function scalePoint(p) {
+  return { x: p.x * MAP_SCALE, y: p.y * MAP_SCALE };
+}
+
+function createScatterObstacles({ count, seed, minSize, maxSize }) {
+  const rng = mulberry32(seed);
+  const obstacles = [];
+  const margin = 10 * MAP_SCALE;
+  const centerClear = 14 * MAP_SCALE;
+  const maxAttempts = count * 30;
+  const minW = minSize * MAP_SCALE;
+  const maxW = maxSize * MAP_SCALE;
+  const minH = minSize * MAP_SCALE;
+  const maxH = maxSize * MAP_SCALE;
+
+  const excludeRects = [
+    ...SOLIDS,
+    ...BUILDINGS.map((b) => ({ x: b.x, y: b.y, w: b.w + WALL_T * 2, h: b.h + WALL_T * 2 }))
+  ];
+
+  let attempts = 0;
+  while (obstacles.length < count && attempts < maxAttempts) {
+    attempts += 1;
+    const w = lerp(minW, maxW, rng());
+    const h = lerp(minH, maxH, rng());
+    const x = lerp(WORLD_BOUNDS.minX + margin + w / 2, WORLD_BOUNDS.maxX - margin - w / 2, rng());
+    const y = lerp(WORLD_BOUNDS.minY + margin + h / 2, WORLD_BOUNDS.maxY - margin - h / 2, rng());
+    if (Math.hypot(x, y) < centerClear) continue;
+    const rect = { id: `scatter-${obstacles.length}`, x, y, w, h, hgt: lerp(0.6, 1.4, rng()) };
+    if (excludeRects.some((r) => rectsOverlap(rect, r, 2 * MAP_SCALE))) continue;
+    if (obstacles.some((r) => rectsOverlap(rect, r, 2 * MAP_SCALE))) continue;
+    obstacles.push(rect);
+  }
+
+  return obstacles;
+}
+
+function rectsOverlap(a, b, pad = 0) {
+  return (
+    Math.abs(a.x - b.x) < (a.w + b.w) / 2 + pad &&
+    Math.abs(a.y - b.y) < (a.h + b.h) / 2 + pad
+  );
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function mulberry32(seed) {
+  let t = seed >>> 0;
+  return function rand() {
+    t += 0x6D2B79F5;
+    let x = t;
+    x = Math.imul(x ^ (x >>> 15), x | 1);
+    x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 function buildWalls(buildings) {
   const walls = [];

@@ -88,16 +88,18 @@ function sendPlayersUpdate(roomCode) {
 }
 
 function sanitizeInput(raw) {
-  return {
-    up: !!raw.up,
-    down: !!raw.down,
-    left: !!raw.left,
-    right: !!raw.right,
-    shoot: !!raw.shoot,
-    angle: typeof raw.angle === 'number' ? clampAngle(raw.angle) : 0,
-    interact: !!raw.interact
-  };
-}
+    return {
+      up: !!raw.up,
+      down: !!raw.down,
+      left: !!raw.left,
+      right: !!raw.right,
+      shoot: !!raw.shoot,
+      angle: typeof raw.angle === 'number' ? clampAngle(raw.angle) : 0,
+      interact: !!raw.interact,
+      enter: !!raw.enter,
+      drift: !!raw.drift
+    };
+  }
 
 function clampAngle(a) {
   if (!Number.isFinite(a)) return 0;

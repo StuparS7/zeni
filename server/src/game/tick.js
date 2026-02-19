@@ -69,7 +69,8 @@ function sendSnapshot(io, room) {
       x: v.x,
       y: v.y,
       angle: v.angle,
-      driverId: v.driverId
+      driverId: v.driverId,
+      steer: v.steer || 0
     })),
     ammoPickups: room.state.ammoPickups.map((a) => ({
       id: a.id,

@@ -1,4 +1,4 @@
-const { AMMO_PICKUP_RADIUS, AMMO_PICKUP_AMOUNT, AMMO_PICKUP_RESPAWN_MS, WEAPONS } = require('../shared/constants');
+const { AMMO_PICKUP_RADIUS, AMMO_PICKUP_AMOUNT, AMMO_PICKUP_RESPAWN_MS, WEAPONS, MAP_SCALE } = require('../shared/constants');
 
 const AMMO_SPAWNS = [
   { id: 'ammo-1', x: -6, y: -2 },
@@ -6,7 +6,7 @@ const AMMO_SPAWNS = [
   { id: 'ammo-3', x: -40, y: -30 },
   { id: 'ammo-4', x: 40, y: 30 },
   { id: 'ammo-5', x: 78, y: -8 }
-];
+].map(scaleSpawn);
 
 function createAmmoPickups() {
   return AMMO_SPAWNS.map((s) => ({
@@ -61,3 +61,7 @@ module.exports = {
   createAmmoPickups,
   updateAmmoPickups
 };
+
+function scaleSpawn(s) {
+  return { ...s, x: s.x * MAP_SCALE, y: s.y * MAP_SCALE };
+}

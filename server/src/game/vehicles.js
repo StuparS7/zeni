@@ -3,16 +3,21 @@ const {
   VEHICLE_ACCEL,
   VEHICLE_TURN_SPEED,
   VEHICLE_DRAG,
+  VEHICLE_DRIFT_DRAG,
+  VEHICLE_GRIP,
+  VEHICLE_DRIFT_GRIP,
+  VEHICLE_MAX_STEER,
   VEHICLE_RADIUS,
   VEHICLE_INTERACT_RADIUS,
   WORLD_BOUNDS,
-  PLAYER_RADIUS
+  PLAYER_RADIUS,
+  MAP_SCALE
 } = require('../shared/constants');
 const { resolveCircleCollisions } = require('./map');
 
 function createVehicles() {
   return [
-    { id: 'car-1', x: 6, y: 8, angle: 0, driverId: null, vx: 0, vy: 0 }
+    { id: 'car-1', x: 6 * MAP_SCALE, y: 8 * MAP_SCALE, angle: 0, driverId: null, vx: 0, vy: 0, steer: 0 }
   ];
 }
 
@@ -25,14 +30,21 @@ function updateVehicles(state, dt, now) {
       v.driverId = null;
     }
 
+    const speed = Math.hypot(v.vx, v.vy);
+    let driftOn = false;
     if (driver) {
       const throttle = (driver.input.up ? 1 : 0) + (driver.input.down ? -1 : 0);
       const steer = (driver.input.right ? 1 : 0) + (driver.input.left ? -1 : 0);
-      const speed = Math.hypot(v.vx, v.vy);
+      driftOn = !!driver.input.drift;
+
+      const steerDir = throttle < 0 ? -1 : 1;
+      const targetSteer = steer * VEHICLE_MAX_STEER * steerDir;
+      const steerLerp = Math.min(1, dt * 8);
+      v.steer += (targetSteer - v.steer) * steerLerp;
 
       if (steer !== 0 && (speed > 0.2 || throttle !== 0)) {
-        const steerDir = throttle < 0 ? -1 : 1;
-        v.angle += steer * VEHICLE_TURN_SPEED * dt * steerDir;
+        const turnScale = Math.max(0.2, Math.min(0.9, speed / VEHICLE_SPEED));
+        v.angle += steer * VEHICLE_TURN_SPEED * dt * steerDir * turnScale;
       }
 
       if (throttle !== 0) {
@@ -40,20 +52,34 @@ function updateVehicles(state, dt, now) {
         v.vx += Math.cos(v.angle) * accel;
         v.vy += Math.sin(v.angle) * accel;
       }
+    } else {
+      const steerLerp = Math.min(1, dt * 6);
+      v.steer += (0 - v.steer) * steerLerp;
     }
 
-    // Drag for drift feel
-    const drag = Math.exp(-VEHICLE_DRAG * dt);
+    // Drag / grip (drift only when space held)
+    const dragCoeff = driftOn ? VEHICLE_DRIFT_DRAG : VEHICLE_DRAG;
+    const drag = Math.exp(-dragCoeff * dt);
     v.vx *= drag;
     v.vy *= drag;
 
-    const speed = Math.hypot(v.vx, v.vy);
     const maxSpeed = v.driverId && state.players.get(v.driverId)?.input?.down ? VEHICLE_SPEED * 0.6 : VEHICLE_SPEED;
     if (speed > maxSpeed) {
       const scale = maxSpeed / speed;
       v.vx *= scale;
       v.vy *= scale;
     }
+
+    // Reduce lateral slide unless drifting
+    const grip = driftOn ? VEHICLE_DRIFT_GRIP : VEHICLE_GRIP;
+    const headingX = Math.cos(v.angle);
+    const headingY = Math.sin(v.angle);
+    const forward = v.vx * headingX + v.vy * headingY;
+    const latX = v.vx - headingX * forward;
+    const latY = v.vy - headingY * forward;
+    const gripFactor = Math.exp(-grip * dt);
+    v.vx = headingX * forward + latX * gripFactor;
+    v.vy = headingY * forward + latY * gripFactor;
 
     if (speed > 0.05) {
       v.x += v.vx * dt;
@@ -78,7 +104,7 @@ function updateVehicles(state, dt, now) {
 
 function handleVehicleInteract(state, now) {
   state.players.forEach((p) => {
-    if (!p.input.interact) return;
+    if (!p.input.enter) return;
     if (now - p.lastInteractAt < 250) return;
     const nearest = findNearestVehicle(p, state.vehicles);
     if (!nearest) return;

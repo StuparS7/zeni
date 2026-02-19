@@ -5,11 +5,14 @@ const {
   ZOMBIE_SPAWN_DELAY_MS,
   ZOMBIE_SPAWN_INTERVAL_MS,
   ZOMBIE_MAX,
+  ZOMBIE_SPAWN_NEAR_MIN,
+  ZOMBIE_SPAWN_NEAR_MAX,
   ROUND_DURATION_MS,
   ZOMBIE_DAMAGE,
   ZOMBIE_HIT_COOLDOWN_MS,
   PLAYER_RADIUS,
-  PLAYER_MAX_HP
+  PLAYER_MAX_HP,
+  WORLD_BOUNDS
 } = require('../shared/constants');
 const { resolveCircleCollisions, ZOMBIE_SPAWNS } = require('./map');
 
@@ -46,14 +49,17 @@ function handleSpawning(state, now) {
 }
 
 function spawnBatch(state) {
-  for (let i = 0; i < ZOMBIE_SPAWNS.length; i += 1) {
+  const players = Array.from(state.players.values()).filter((p) => p.alive);
+  const batch = Math.min(8, ZOMBIE_MAX - state.zombies.size);
+  for (let i = 0; i < batch; i += 1) {
     if (state.zombies.size >= ZOMBIE_MAX) return;
-    const p = ZOMBIE_SPAWNS[i];
+    const pos = pickSpawnPosition(state, players) || fallbackSpawn(i, players);
+    if (!pos) return;
     const id = `z${state.nextZombieId++}`;
     state.zombies.set(id, {
       id,
-      x: p.x,
-      y: p.y,
+      x: pos.x,
+      y: pos.y,
       hp: ZOMBIE_HP,
       r: ZOMBIE_RADIUS,
       lastHitAt: 0
@@ -75,6 +81,46 @@ function findNearestPlayer(z, players) {
     }
   }
   return best;
+}
+
+function pickSpawnPosition(state, players) {
+  if (!players.length) return null;
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const base = players[Math.floor(Math.random() * players.length)];
+    const angle = Math.random() * Math.PI * 2;
+    const dist = lerp(ZOMBIE_SPAWN_NEAR_MIN, ZOMBIE_SPAWN_NEAR_MAX, Math.random());
+    let x = base.x + Math.cos(angle) * dist;
+    let y = base.y + Math.sin(angle) * dist;
+    x = clamp(x, WORLD_BOUNDS.minX, WORLD_BOUNDS.maxX);
+    y = clamp(y, WORLD_BOUNDS.minY, WORLD_BOUNDS.maxY);
+    const pushed = resolveCircleCollisions(x, y, ZOMBIE_RADIUS);
+    if (Math.hypot(pushed.x - base.x, pushed.y - base.y) < ZOMBIE_SPAWN_NEAR_MIN * 0.6) continue;
+    return { x: pushed.x, y: pushed.y };
+  }
+  return null;
+}
+
+function fallbackSpawn(i, players) {
+  if (players && players.length) {
+    const base = players[i % players.length];
+    const angle = Math.random() * Math.PI * 2;
+    const dist = lerp(ZOMBIE_SPAWN_NEAR_MIN, ZOMBIE_SPAWN_NEAR_MAX, Math.random());
+    let x = base.x + Math.cos(angle) * dist;
+    let y = base.y + Math.sin(angle) * dist;
+    x = clamp(x, WORLD_BOUNDS.minX, WORLD_BOUNDS.maxX);
+    y = clamp(y, WORLD_BOUNDS.minY, WORLD_BOUNDS.maxY);
+    return { x, y };
+  }
+  const p = ZOMBIE_SPAWNS[i % ZOMBIE_SPAWNS.length];
+  return p ? { x: p.x, y: p.y } : null;
+}
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
 }
 
 function handleRound(state, now) {

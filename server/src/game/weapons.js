@@ -1,4 +1,4 @@
-const { WEAPONS, WEAPON_PICKUP_RADIUS } = require('../shared/constants');
+const { WEAPONS, WEAPON_PICKUP_RADIUS, MAP_SCALE } = require('../shared/constants');
 
 const WEAPON_SPAWNS = [
   { id: 'wp-0', x: 2, y: 2, weaponId: 'pistol' },
@@ -16,7 +16,7 @@ const WEAPON_SPAWNS = [
   { id: 'wp-hs6', x: 50, y: 30, weaponId: 'shotgun' },
   { id: 'wp-bw1', x: -78, y: -8, weaponId: 'rifle' },
   { id: 'wp-be2', x: 78, y: 18, weaponId: 'shotgun' }
-];
+].map(scaleSpawn);
 
 function updateWeaponPickups(state, now) {
   state.players.forEach((p) => {
@@ -51,3 +51,7 @@ module.exports = {
   WEAPON_SPAWNS,
   updateWeaponPickups
 };
+
+function scaleSpawn(s) {
+  return { ...s, x: s.x * MAP_SCALE, y: s.y * MAP_SCALE };
+}

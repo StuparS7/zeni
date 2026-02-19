@@ -1,4 +1,4 @@
-import { PLAYER_SPEED, SMOOTHING } from '../shared/constants.js';
+import { PLAYER_SPEED, SMOOTHING, CAMERA_TILT } from '../shared/constants.js';
 import { render } from './render.js';
 import { resolvePlayerCollisions } from './map.js';
 
@@ -26,9 +26,10 @@ function step(state, input, dt) {
     // Camera centers on local player, so their screen position is canvas center.
     const sx = input.mouse.x - centerX;
     const sy = input.mouse.y - centerY;
-    const scale = state.renderScale || 20;
-    const worldDx = sx / scale;
-    const worldDy = sy / scale;
+    const scaleX = state.renderScale || 20;
+    const scaleY = scaleX * (CAMERA_TILT || 1);
+    const worldDx = sx / scaleX;
+    const worldDy = sy / scaleY;
     input.flags.angle = Math.atan2(worldDy, worldDx);
   }
 
@@ -57,6 +58,8 @@ function step(state, input, dt) {
 
     const vx = p.renderX - oldX;
     const vy = p.renderY - oldY;
+    const moved = vx * vx + vy * vy > 0.0004;
+    p.moving = isLocal ? (inputDx !== 0 || inputDy !== 0) : moved;
     if (isLocal && (inputDx !== 0 || inputDy !== 0)) {
       p.facing = Math.atan2(inputDy, inputDx);
     } else if (vx * vx + vy * vy > 0.0004) {

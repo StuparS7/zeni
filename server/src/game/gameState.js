@@ -60,7 +60,9 @@ function createPlayer(id, name, index) {
       right: false,
       shoot: false,
       angle: 0,
-      interact: false
+      interact: false,
+      enter: false,
+      drift: false
     }
   };
 }

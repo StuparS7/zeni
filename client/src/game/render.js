@@ -1,4 +1,4 @@
-import { WORLD_BOUNDS, ISO_TILE_W, ISO_TILE_H, WEAPONS } from '../shared/constants.js';
+import { WORLD_BOUNDS, ISO_TILE_W, ISO_TILE_H, WEAPONS, CAMERA_TILT, PLAYER_SPRITE_FORCE_SINGLE } from '../shared/constants.js';
 
 const BG = '#0e1624';
 const OTHER_COLOR = '#c18cf9';
@@ -18,6 +18,36 @@ const VEHICLE_ROOF = '#3a4c66';
 const MINIMAP_BG = 'rgba(9, 12, 18, 0.8)';
 const MINIMAP_BORDER = 'rgba(150, 170, 210, 0.45)';
 const MINIMAP_OBSTACLE = 'rgba(42, 49, 68, 0.9)';
+
+const playerSprite = new Image();
+playerSprite.src = 'assets/player.png';
+let playerSpriteReady = false;
+playerSprite.onload = () => {
+  playerSpriteReady = true;
+};
+const PLAYER_SPRITE_FPS = 10;
+const PLAYER_SPRITE_DIR_MAP_GRID = {
+  idle: [4],
+  n: [1],
+  ne: [2],
+  e: [5],
+  se: [8],
+  s: [7],
+  sw: [6],
+  w: [3],
+  nw: [0]
+};
+const PLAYER_SPRITE_DIR_MAP_SINGLE = {
+  idle: [0],
+  n: [0],
+  ne: [0],
+  e: [0],
+  se: [0],
+  s: [0],
+  sw: [0],
+  w: [0],
+  nw: [0]
+};
 
 export function render(ctx, state) {
   const canvas = ctx.canvas;
@@ -259,12 +289,16 @@ function drawVehicles(ctx, state, cam) {
     ctx.closePath();
     ctx.fill();
 
-    // Wheels
+    // Wheels (front wheels steer)
     ctx.fillStyle = '#0d1117';
-    ctx.fillRect(-bodyLen * 0.35, -bodyWid * 0.62, wheelW, wheelH);
-    ctx.fillRect(-bodyLen * 0.35, bodyWid * 0.44, wheelW, wheelH);
-    ctx.fillRect(bodyLen * 0.17, -bodyWid * 0.62, wheelW, wheelH);
-    ctx.fillRect(bodyLen * 0.17, bodyWid * 0.44, wheelW, wheelH);
+    const steer = v.steer || 0;
+    const rearX = -bodyLen * 0.32;
+    const frontX = bodyLen * 0.22;
+    const wheelY = bodyWid * 0.53;
+    drawWheel(ctx, rearX, -wheelY, wheelW, wheelH, 0);
+    drawWheel(ctx, rearX, wheelY, wheelW, wheelH, 0);
+    drawWheel(ctx, frontX, -wheelY, wheelW, wheelH, steer);
+    drawWheel(ctx, frontX, wheelY, wheelW, wheelH, steer);
 
     // Headlights / taillights
     ctx.fillStyle = 'rgba(120, 200, 255, 0.9)';
@@ -312,10 +346,47 @@ function drawPlayer(ctx, p, state, cam, canvas) {
 
   // Body rotated to face movement direction
   const facing = Number.isFinite(p.facing) ? p.facing : 0;
-  ctx.save();
-  ctx.translate(screenX, screenY);
-  ctx.rotate(facing);
 
+  if (playerSpriteReady) {
+    const spriteSize = size * 3.4;
+    const layout = getSpriteLayout();
+    const frameW = layout.frameW;
+    const frameH = layout.frameH;
+    const moving = !!p.moving;
+    const t = performance.now() / 1000;
+    const dir = directionFromAngle(facing);
+    const frames = layout.dirMap[dir] || layout.dirMap.s;
+    const idleFrame = layout.dirMap.idle ? layout.dirMap.idle[0] : frames[0];
+    const frame = moving
+      ? frames[Math.floor(t * PLAYER_SPRITE_FPS) % frames.length]
+      : idleFrame;
+    const fx = frame % layout.cols;
+    const fy = Math.floor(frame / layout.cols);
+    const sx = fx * frameW;
+    const sy = fy * frameH;
+    ctx.save();
+    ctx.translate(screenX, screenY);
+    if (layout.mode === 'single') {
+      ctx.rotate(facing);
+    }
+    ctx.imageSmoothingEnabled = true;
+    ctx.globalAlpha = p.alive === false ? 0.6 : 1;
+    ctx.drawImage(
+      playerSprite,
+      sx,
+      sy,
+      frameW,
+      frameH,
+      -spriteSize / 2,
+      -spriteSize / 2,
+      spriteSize,
+      spriteSize
+    );
+    ctx.restore();
+  } else {
+    ctx.save();
+    ctx.translate(screenX, screenY);
+    ctx.rotate(facing);
   // Legs (back)
   ctx.fillStyle = pants;
   ctx.beginPath();
@@ -355,6 +426,7 @@ function drawPlayer(ctx, p, state, cam, canvas) {
   ctx.fillRect(bodyLen * 0.25, -bodyWid * 0.1, bodyLen * 0.28, bodyWid * 0.12);
 
   ctx.restore();
+  }
 
   // Name tag
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
@@ -416,6 +488,14 @@ function roundedRect(ctx, x, y, w, h, r) {
   ctx.lineTo(x, y + radius);
   ctx.quadraticCurveTo(x, y, x + radius, y);
   ctx.closePath();
+}
+
+function drawWheel(ctx, x, y, w, h, angle) {
+  ctx.save();
+  ctx.translate(x, y);
+  if (angle) ctx.rotate(angle);
+  ctx.fillRect(-w / 2, -h / 2, w, h);
+  ctx.restore();
 }
 
 function drawMiniMap(ctx, state) {
@@ -518,11 +598,73 @@ function getCamera(state) {
   };
 }
 
+function directionFromAngle(angle) {
+  if (!Number.isFinite(angle)) return 's';
+  const pi = Math.PI;
+  const seg = pi / 8;
+  if (angle >= -seg && angle < seg) return 'e';
+  if (angle >= seg && angle < 3 * seg) return 'se';
+  if (angle >= 3 * seg && angle < 5 * seg) return 's';
+  if (angle >= 5 * seg && angle < 7 * seg) return 'sw';
+  if (angle >= 7 * seg || angle < -7 * seg) return 'w';
+  if (angle >= -7 * seg && angle < -5 * seg) return 'nw';
+  if (angle >= -5 * seg && angle < -3 * seg) return 'n';
+  return 'ne';
+}
+
+function getSpriteLayout() {
+  if (PLAYER_SPRITE_FORCE_SINGLE) {
+    return {
+      cols: 1,
+      rows: 1,
+      dirMap: PLAYER_SPRITE_DIR_MAP_SINGLE,
+      mode: 'single',
+      frameW: playerSpriteReady ? playerSprite.width : 1,
+      frameH: playerSpriteReady ? playerSprite.height : 1
+    };
+  }
+  if (!playerSpriteReady) {
+    return {
+      cols: 1,
+      rows: 1,
+      dirMap: PLAYER_SPRITE_DIR_MAP_SINGLE,
+      mode: 'single',
+      frameW: 1,
+      frameH: 1
+    };
+  }
+  const gridCols = 3;
+  const gridRows = 3;
+  const canGrid =
+    playerSprite.width >= gridCols * 16 &&
+    playerSprite.height >= gridRows * 16;
+  if (canGrid) {
+    return {
+      cols: gridCols,
+      rows: gridRows,
+      dirMap: PLAYER_SPRITE_DIR_MAP_GRID,
+      mode: 'grid',
+      frameW: Math.floor(playerSprite.width / gridCols),
+      frameH: Math.floor(playerSprite.height / gridRows)
+    };
+  }
+  return {
+    cols: 1,
+    rows: 1,
+    dirMap: PLAYER_SPRITE_DIR_MAP_SINGLE,
+    mode: 'single',
+    frameW: playerSprite.width,
+    frameH: playerSprite.height
+  };
+}
+
 function worldToScreen(x, y, cam, canvas) {
   const dx = x - cam.x;
   const dy = y - cam.y;
+  const scaleX = cam.scale;
+  const scaleY = cam.scale * (CAMERA_TILT || 1);
   return {
-    x: canvas.width / 2 + dx * cam.scale,
-    y: canvas.height / 2 + dy * cam.scale
+    x: canvas.width / 2 + dx * scaleX,
+    y: canvas.height / 2 + dy * scaleY
   };
 }

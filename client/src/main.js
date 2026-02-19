@@ -249,8 +249,8 @@ function updatePromptUI() {
   const vehicle = findNearestVehicle(local);
   if (vehicle) {
     const text = local.inVehicle && local.vehicleId === vehicle.id
-      ? 'Press E: Exit vehicle'
-      : 'Press E: Enter vehicle';
+      ? 'Press Q: Exit vehicle'
+      : 'Press Q: Enter vehicle';
     options.push({ d2: vehicle.d2, text });
   }
 
@@ -274,7 +274,8 @@ function mergeVehicles(vehicles) {
         targetX: v.x,
         targetY: v.y,
         angle: v.angle || 0,
-        driverId: v.driverId || null
+        driverId: v.driverId || null,
+        steer: v.steer || 0
       });
     }
     const local = state.vehicles.get(v.id);
@@ -282,6 +283,7 @@ function mergeVehicles(vehicles) {
     local.targetY = v.y;
     local.angle = v.angle || 0;
     local.driverId = v.driverId || null;
+    local.steer = v.steer || 0;
   });
   Array.from(state.vehicles.keys()).forEach((id) => {
     if (!seen.has(id)) state.vehicles.delete(id);

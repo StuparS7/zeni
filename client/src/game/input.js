@@ -6,7 +6,9 @@ export function createInput(canvas) {
     right: false,
     angle: 0,
     shoot: false,
-    interact: false
+    interact: false,
+    enter: false,
+    drift: false
   };
   const mouse = { x: 0, y: 0 };
 
@@ -27,6 +29,8 @@ export function createInput(canvas) {
       flags[key] = true;
     }
     if (e.key === 'e' || e.key === 'E') flags.interact = true;
+    if (e.key === 'q' || e.key === 'Q') flags.enter = true;
+    if (e.code === 'Space') flags.drift = true;
   });
   window.addEventListener('keyup', (e) => {
     const key = keys[e.key];
@@ -34,6 +38,8 @@ export function createInput(canvas) {
       flags[key] = false;
     }
     if (e.key === 'e' || e.key === 'E') flags.interact = false;
+    if (e.key === 'q' || e.key === 'Q') flags.enter = false;
+    if (e.code === 'Space') flags.drift = false;
   });
 
   canvas.addEventListener('mousemove', (e) => {
